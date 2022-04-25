@@ -11,20 +11,28 @@ def scrape_season(season):
 
 
     # Data structure for schedules
-    data = {'date': [], 'visitor': [], 'home': []}
-    for slate in soup.find('div', attrs={'class': 'section_content'}).find_all('div'):
+    data = {'date': [], 'visitor': [], 'home': [], 'season': []}
+    
+    # Regular and Post season
+    slates = []
+    for season in soup.find_all('div', attrs={'class': 'section_content'}):
+        for slate in season.find_all('div'):
+            slates.append(slate)
+
+    for slate in slates:
         # Date of slate of games
         date = slate.find('h3').text
         print(f'\t{date}')
         for game in slate.find_all('p', attrs={'class': 'game'}):
             # Home and visitor team names
-            teams = game.find_all('a')
-            print(f'\t\t{teams[0].text} @ {teams[1].text}')
+            teams = [team.text for team in game.find_all('a')]
+            print(f'\t\t{teams[0]} @ {teams[1]}')
 
             # Append data
             data['date'].append(date)
-            data['visitor'].append(teams[0].text)
-            data['home'].append(teams[1].text)
+            data['visitor'].append(teams[0])
+            data['home'].append(teams[1])
+            data['season'].append(season)
     
     return data
 
