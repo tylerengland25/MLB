@@ -29,21 +29,26 @@ def scrape_scorebox(date, teams, table):
 
 
 def scrape_batting_details(date, teams, team, table):
-    cols = [th.text.lower() for th in table.find('tr').find_all('th')][1:]
-    df = pd.DataFrame(
-        columns=['date', 'visitor', 'home', 'team', 'player', 'position'] + cols
-    )
+    cols = [th.text.lower() for th in table.find('tr').find_all('th')][1:-1]
+    df = pd.DataFrame()
 
     for row in table.find_all('tr')[1:]:
         player = " ".join(x.strip() for x in row.find('th').text.split(" ")[:-1])
         position = "".join(row.find('th').text.split(" ")[-1])
-        data = [td.text for td in row.find_all('td')]
+        data = [td.text.strip() for td in row.find_all('td')]
+
+        # Hitting results
+        details = []
+        detail_counts = []
+        if data[-1] != '':
+            details = [hit.split('·')[-1] for hit in data[-1].split(",")]
+            detail_counts = [hit.split('·')[0] if len(hit.split('·')) > 1 else 1 for hit in data[-1].split(",")]
 
         if player != 'Team' and player != "":
             df = df.append(
                 pd.Series(
-                    [date, teams[0], teams[1], team, player, position] + data,
-                    index=df.columns
+                    [date, teams[0], teams[1], team, player, position] + data[:-1] + detail_counts,
+                    index=['date', 'visitor', 'home', 'team', 'player', 'position'] + cols + details
                 ), 
                 ignore_index=True
             )
@@ -52,20 +57,26 @@ def scrape_batting_details(date, teams, team, table):
 
     
 def scrape_batting_totals(date, teams, team, table):
-    cols = [th.text.lower() for th in table.find('tr').find_all('th')][1:]
-    df = pd.DataFrame(
-        columns=['date', 'visitor', 'home', 'team'] + cols
-    )
+    cols = [th.text.lower() for th in table.find('tr').find_all('th')][1:-1]
+    df = pd.DataFrame()
 
+    hitting_results = {}
     for row in table.find_all('tr')[1:]:
         player = " ".join(row.find('th').text.split(" ")[:-1])
-        data = [td.text for td in row.find_all('td')]
+        data = [td.text.strip() for td in row.find_all('td')]
+
+        # Hitting results
+        details = [hit.split('·')[-1] for hit in data[-1].split(",")]
+        detail_counts = [int(hit.split('·')[0]) if len(hit.split('·')) > 1 else 1 for hit in data[-1].split(",")]
+        for detail, count in zip(details, detail_counts):
+            hitting_results.update({detail: hitting_results.get(detail, 0) + count})
 
         if player == 'Team':
+            hitting_results.pop('')
             df = df.append(
                 pd.Series(
-                    [date, teams[0], teams[1], team] + data,
-                    index=df.columns
+                    [date, teams[0], teams[1], team] + data[:-1] + list(hitting_results.values()),
+                    index=['date', 'visitor', 'home', 'team'] + cols + list(hitting_results.keys())
                 ), 
                 ignore_index=True
             )
