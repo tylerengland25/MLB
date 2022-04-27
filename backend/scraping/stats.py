@@ -1,3 +1,4 @@
+import datetime
 from bs4 import BeautifulSoup
 import bs4
 from urllib.request import urlopen
@@ -169,7 +170,7 @@ def scrape_game(data, date, teams, link):
     data['pitching_totals'] = data['pitching_totals'].append(scrape_pitching_totals(date, teams, teams[1], home_pitching), ignore_index=True)
 
 
-def scrape_season(season, data):
+def scrape_season(season, data, last_slate=None):
     # Connect to website
     url = f'https://www.baseball-reference.com/leagues/majors/{season}-schedule.shtml'
     html = urlopen(url)
@@ -184,6 +185,15 @@ def scrape_season(season, data):
     for slate in slates: 
         # Date of slate of games
         date = slate.find('h3').text
+
+        # Only scrape games that haven't been scraped
+        if last_slate is not None:
+            if date != "Today's Games":
+                if last_slate < datetime.datetime.strptime(date, '%A, %B %d, %Y'):
+                    pass
+            else:
+                return data
+
         print(f'\t{date}')
         for game in slate.find_all('p', attrs={'class': 'game'}):
             # Home and visitor team names
@@ -202,7 +212,7 @@ def scrape_season(season, data):
     return data
 
 
-def main():
+def scrape_past_seasons(current_season):
     # Data structure for batting details and totals, pitching details and totals
     data = {
         'boxscore': pd.DataFrame(),
@@ -212,8 +222,7 @@ def main():
         'pitching_totals': pd.DataFrame()
         }
 
-
-    for season in range(2022 - 5, 2022):
+    for season in range(current_season - 5, current_season):
         print(f'Season: {season}')
         data = scrape_season(season, data)
         for df in data:
@@ -225,6 +234,31 @@ def main():
                 data[df].to_csv(f'backend/data/scores/{df}.csv', index=False)
 
 
+def scrape_current_season(current_season):
+    # Data structure for batting details and totals, pitching details and totals
+    data = {
+        'boxscore': pd.read_csv('backend/data/scores/boxscore.csv'),
+        'batting_details': pd.read_csv('backend/data/batting/details.csv'), 
+        'batting_totals': pd.read_csv('backend/data/batting/totals.csv'), 
+        'pitching_details': pd.read_csv('backend/data/pitching/details.csv'),
+        'pitching_totals': pd.read_csv('backend/data/pitching/totals.csv')
+        }
+
+    # Date of ast slate of games scraped
+    schedule = pd.read_csv('backend/data/schedules/2022.csv')
+    schedule['date'] = pd.to_datetime(schedule['date'])
+    last_slate = pd.to_datetime(data['boxscore']['date']).max()
+
+    data = scrape_season(current_season, data, last_slate)
+    for df in data:
+            data[df]['date'] = pd.to_datetime(data[df]['date'])
+            if len(df.split("_")) > 1:
+
+                data[df].to_csv(f'backend/data/{df.split("_")[0]}/{df.split("_")[1]}.csv', index=False)
+            else:
+                data[df].to_csv(f'backend/data/scores/{df}.csv', index=False)
+
+
 if __name__ == '__main__':
-    main()
+    scrape_current_season(2022)
  
