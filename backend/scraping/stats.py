@@ -214,15 +214,22 @@ def scrape_season(season, data, last_slate=None):
 
 def scrape_past_seasons(current_season):
     # Data structure for batting details and totals, pitching details and totals
+    # data = {
+    #     'boxscore': pd.DataFrame(),
+    #     'batting_details': pd.DataFrame(), 
+    #     'batting_totals': pd.DataFrame(), 
+    #     'pitching_details': pd.DataFrame(),
+    #     'pitching_totals': pd.DataFrame()
+    #     }
     data = {
-        'boxscore': pd.DataFrame(),
-        'batting_details': pd.DataFrame(), 
-        'batting_totals': pd.DataFrame(), 
-        'pitching_details': pd.DataFrame(),
-        'pitching_totals': pd.DataFrame()
+        'boxscore': pd.read_csv('backend/data/scores/boxscore.csv'),
+        'batting_details': pd.read_csv('backend/data/batting/details.csv'), 
+        'batting_totals': pd.read_csv('backend/data/batting/totals.csv'), 
+        'pitching_details': pd.read_csv('backend/data/pitching/details.csv'),
+        'pitching_totals': pd.read_csv('backend/data/pitching/totals.csv')
         }
 
-    for season in range(current_season - 5, current_season):
+    for season in range(current_season - 1, current_season):
         print(f'Season: {season}')
         data = scrape_season(season, data)
         for df in data:
@@ -260,5 +267,5 @@ def scrape_current_season(current_season):
 
 
 if __name__ == '__main__':
-    scrape_current_season(2022)
+    scrape_past_seasons(2022)
  

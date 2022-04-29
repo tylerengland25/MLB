@@ -1,4 +1,6 @@
+from datetime import datetime
 import pandas as pd
+import numpy as np
 
 
 def load_batting_totals():
@@ -24,6 +26,17 @@ def load_pitching_totals():
     return pitching_totals
 
 
+def load_schedules():
+    # Load schedules
+    schedule = pd.DataFrame()
+    for season in range(2022-5, 2022):
+        schedule = schedule.append(pd.read_csv(f'backend/data/schedules/{season}.csv'), ignore_index=True)
+
+    schedule['date'] = pd.to_datetime(schedule['date']) 
+
+    return schedule
+
+
 def feature_engineer(df, type):
     if type == 'batting':
         # Function for feature engineering stats for batting
@@ -38,31 +51,38 @@ def feature_engineer(df, type):
     return df
 
 
-def ema(df, type):
-    # Function for ema
-    temp_df = df.sort_values(by=['team', 'date']).copy()
+def ema(df, type, schedule):
 
-    sma_df = pd.DataFrame()
+    df = pd.merge(
+        schedule.drop(['season'], axis=1),
+        df,
+        left_on=['date', 'visitor', 'home'],
+        right_on=['date', 'visitor', 'home'],
+        how='left'
+    )
+
+    ema_df = pd.DataFrame()
 
     for team in df['team'].unique():
         for season in df['date'].dt.year.unique():
-            team_df = temp_df[(temp_df['team'] == team) & (temp_df['date'].dt.year == season)].copy()
+            team_df = df[(df['team'] == team) & (df['date'].dt.year == season)].sort_values(by=['date']).copy()
             for col in list(set(df.columns).difference({'date', 'visitor', 'home', 'team'})):
-                team_df[col] = team_df[col].ewm(alpha=2 / 3).mean()
+                team_df[col] = team_df[col].ewm(alpha=.5).mean()
+                team_df[col] = team_df[col].shift(1)
             
-            sma_df = sma_df.append(team_df, ignore_index=True)
+            ema_df = ema_df.append(team_df, ignore_index=True)
     
-    sma_df = pd.merge(
-        sma_df, 
+    ema_df = pd.merge(
+        ema_df, 
         df[['date', 'visitor', 'home', 'team', 'h']],
         left_on=['date', 'visitor', 'home', 'team'], 
         right_on=['date', 'visitor', 'home', 'team'],
         suffixes=('', '_target')
     )
 
-    sma_df = feature_engineer(sma_df, type)
+    ema_df = feature_engineer(ema_df, type)
 
-    return sma_df.sort_values(by=['date']).dropna(axis=0)
+    return ema_df.sort_values(by=['date'])
 
 
 def correlated_columns(df, alpha):
@@ -77,7 +97,8 @@ def correlated_columns(df, alpha):
 def preprocess(type):
     if type == 'batting':
         df = load_batting_totals()
-        ema_df = ema(df, type)
+        schedule = load_schedules()
+        ema_df = ema(df, type, schedule)
 
         corr_cols = correlated_columns(ema_df, alpha=.7)
             
@@ -85,9 +106,10 @@ def preprocess(type):
     
     elif type == 'pitching':
         df = load_pitching_totals()
-        ema_df = ema(df, type)
+        schedule = load_schedules()
+        ema_df = ema(df, type, schedule)
 
-        corr_cols = correlated_columns(ema_df, alpha=.7)
+        corr_cols = correlated_columns(ema_df, alpha=.1)
         
         return ema_df[['date', 'visitor', 'home', 'team', 'h_target'] + corr_cols]
 
@@ -115,8 +137,25 @@ def load_preprocessed_data():
         suffixes=('_home', '_visitor')
     )
 
+    df['most_hits'] = np.where(
+        df['h_target_batting_home'] > df['h_target_batting_visitor'], 1, 0
+    )
+
+    df['total_hits'] = df['h_target_batting_home'] + df['h_target_batting_visitor']
+
+    df = df.drop(
+        [
+            'team_home', 'team_visitor', 'h_target_batting_home', 'h_target_batting_visitor', 
+            'h_target_pitching_home', 'h_target_pitching_visitor'
+        ], 
+        axis=1
+    )
+
     return df
 
 
 if __name__ == '__main__':
-    load_preprocessed_data().to_csv('backend/preprocess/preprocess.csv', index=False)
+    print('Starting')
+    df = load_preprocessed_data()
+    print('To CSV')
+    df.to_csv('backend/preprocess/preprocess.csv', index=False)
