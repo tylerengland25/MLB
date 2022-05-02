@@ -3,17 +3,17 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, classification_report
 import pickle
-
-import sys
-sys.path.append("C:\\Users\\tyler\\OneDrive\\Documents\\Python\\MLB\\backend\\preprocess")
-from preprocess import load_preprocessed_data
+import pandas as pd
+import datetime
 
 
 def model():
     # Load preprocessed data
-    df = load_preprocessed_data()
+    df = pd.read_csv('backend/preprocess/preprocess.csv').dropna(axis=0)
+    df['date'] = pd.to_datetime(df['date'])
     X = df.drop(['most_hits', 'total_hits', 'date', 'visitor', 'home'], axis=1)
     y = df['most_hits']
+
 
     # Split data 
     X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=1)

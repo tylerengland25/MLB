@@ -29,10 +29,12 @@ def load_pitching_totals():
 def load_schedules():
     # Load schedules
     schedule = pd.DataFrame()
-    for season in range(2022-5, 2022):
+    for season in range(2022-5, 2022 + 1):
         schedule = schedule.append(pd.read_csv(f'backend/data/schedules/{season}.csv'), ignore_index=True)
 
     schedule['date'] = pd.to_datetime(schedule['date']) 
+    schedule['visitor'] = schedule['visitor'].apply(lambda x: 'Arizona Diamondbacks' if x == "Arizona D'Backs" else x)
+    schedule['home'] = schedule['home'].apply(lambda x: 'Arizona Diamondbacks' if x == "Arizona D'Backs" else x)
 
     return schedule
 
@@ -70,14 +72,17 @@ def ema(df, type, schedule):
                 team_df[col] = team_df[col].ewm(alpha=.5).mean()
                 team_df[col] = team_df[col].shift(1)
             
-            ema_df = ema_df.append(team_df, ignore_index=True)
+            ema_df = ema_df.append(team_df.dropna(axis=0), ignore_index=True)
     
     ema_df = pd.merge(
         ema_df, 
         df[['date', 'visitor', 'home', 'team', 'h']],
         left_on=['date', 'visitor', 'home', 'team'], 
         right_on=['date', 'visitor', 'home', 'team'],
-        suffixes=('', '_target')
+        suffixes=('', '_target'),
+        how='left'
+    ).drop_duplicates(
+        ['date', 'visitor', 'home', 'team']
     )
 
     ema_df = feature_engineer(ema_df, type)
@@ -85,33 +90,16 @@ def ema(df, type, schedule):
     return ema_df.sort_values(by=['date'])
 
 
-def correlated_columns(df, alpha):
-    corr_cols = []
-    for col in set(df.columns).difference({'date', 'visitor', 'home', 'team', 'h_target'}):
-        if abs(df[col].corr(df['h_target'])) >= alpha:
-            corr_cols.append(col)
-
-    return corr_cols
-
-
 def preprocess(type):
     if type == 'batting':
         df = load_batting_totals()
-        schedule = load_schedules()
-        ema_df = ema(df, type, schedule)
-
-        corr_cols = correlated_columns(ema_df, alpha=.7)
-            
-        return ema_df[['date', 'visitor', 'home', 'team', 'h_target'] + corr_cols]
-    
     elif type == 'pitching':
         df = load_pitching_totals()
-        schedule = load_schedules()
-        ema_df = ema(df, type, schedule)
 
-        corr_cols = correlated_columns(ema_df, alpha=.1)
+    schedule = load_schedules()
+    ema_df = ema(df, type, schedule)
         
-        return ema_df[['date', 'visitor', 'home', 'team', 'h_target'] + corr_cols]
+    return ema_df[['date', 'visitor', 'home', 'team', 'h', 'h_target']]
 
 
 def load_preprocessed_data():
@@ -121,18 +109,20 @@ def load_preprocessed_data():
     df = pd.merge(
         batting_df,
         pitching_df,
-        left_on=['date', 'visitor', 'home', 'team'],
+        left_on=['date', 'visitor', 'home', 'team'], 
         right_on=['date', 'visitor', 'home', 'team'],
-        suffixes=('_batting', '_pitching')
+        suffixes=('_batting', '_pitching'), 
+        how='left'
     )
 
     home_df = df[df['home'] == df['team']].copy()
+    
     visitor_df = df[df['visitor'] == df['team']].copy()
 
     df = pd.merge(
         home_df, 
         visitor_df,
-        left_on=['date', 'visitor', 'home'],
+        left_on=['date', 'visitor', 'home'], 
         right_on=['date', 'visitor', 'home'],
         suffixes=('_home', '_visitor')
     )
@@ -155,7 +145,5 @@ def load_preprocessed_data():
 
 
 if __name__ == '__main__':
-    print('Starting')
     df = load_preprocessed_data()
-    print('To CSV')
     df.to_csv('backend/preprocess/preprocess.csv', index=False)

@@ -190,43 +190,34 @@ def scrape_season(season, data, last_slate=None):
         if last_slate is not None:
             if date != "Today's Games":
                 if last_slate < datetime.datetime.strptime(date, '%A, %B %d, %Y'):
-                    pass
+                    print(f'\t{date}')
+                    for game in slate.find_all('p', attrs={'class': 'game'}):
+                        # Home and visitor team names
+                        teams = [team.text for team in game.find_all('a')]
+                        print(f'\t\t{teams[0]} @ {teams[1]}')
+
+                        # Fix D'backs name
+                        teams[0] = 'Arizona Diamondbacks' if teams[0] == 'Arizona D\'Backs' else teams[0]
+                        teams[1] = 'Arizona Diamondbacks' if teams[1] == 'Arizona D\'Backs' else teams[1]
+
+                        # href Link
+                        link = game.find('em').find('a')['href']
+                        # Scrape game data
+                        scrape_game(data, date, teams, link)
             else:
                 return data
-
-        print(f'\t{date}')
-        for game in slate.find_all('p', attrs={'class': 'game'}):
-            # Home and visitor team names
-            teams = [team.text for team in game.find_all('a')]
-            print(f'\t\t{teams[0]} @ {teams[1]}')
-
-            # Fix D'backs name
-            teams[0] = 'Arizona Diamondbacks' if teams[0] == 'Arizona D\'Backs' else teams[0]
-            teams[1] = 'Arizona Diamondbacks' if teams[1] == 'Arizona D\'Backs' else teams[1]
-
-            # href Link
-            link = game.find('em').find('a')['href']
-            # Scrape game data
-            scrape_game(data, date, teams, link)
     
     return data
 
 
 def scrape_past_seasons(current_season):
     # Data structure for batting details and totals, pitching details and totals
-    # data = {
-    #     'boxscore': pd.DataFrame(),
-    #     'batting_details': pd.DataFrame(), 
-    #     'batting_totals': pd.DataFrame(), 
-    #     'pitching_details': pd.DataFrame(),
-    #     'pitching_totals': pd.DataFrame()
-    #     }
     data = {
-        'boxscore': pd.read_csv('backend/data/scores/boxscore.csv'),
-        'batting_details': pd.read_csv('backend/data/batting/details.csv'), 
-        'batting_totals': pd.read_csv('backend/data/batting/totals.csv'), 
-        'pitching_details': pd.read_csv('backend/data/pitching/details.csv'),
-        'pitching_totals': pd.read_csv('backend/data/pitching/totals.csv')
+        'boxscore': pd.DataFrame(),
+        'batting_details': pd.DataFrame(), 
+        'batting_totals': pd.DataFrame(), 
+        'pitching_details': pd.DataFrame(),
+        'pitching_totals': pd.DataFrame()
         }
 
     for season in range(current_season - 1, current_season):
@@ -267,5 +258,5 @@ def scrape_current_season(current_season):
 
 
 if __name__ == '__main__':
-    scrape_past_seasons(2022)
+    scrape_current_season(2022)
  
