@@ -5,13 +5,13 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, classification_report
 import pickle
 import pandas as pd
-import datetime
 
 
 def model():
     # Load preprocessed data
     df = pd.read_csv('backend/preprocess/preprocess.csv').dropna(axis=0)
     df['date'] = pd.to_datetime(df['date'])
+    df = df[df['date'].dt.year < 2022]
     X = df.drop(['most_hits', 'total_hits', 'date', 'visitor', 'home'], axis=1)
     y = df['most_hits']
 

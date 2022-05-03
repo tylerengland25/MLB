@@ -1,4 +1,3 @@
-from datetime import datetime
 import pandas as pd
 import numpy as np
 
@@ -26,6 +25,36 @@ def load_pitching_totals():
     return pitching_totals
 
 
+def load_pitching_details(type):
+    # Load pitching details
+    pitching_details = pd.read_csv('backend/data/pitching/details.csv')
+    pitching_details['date'] = pd.to_datetime(pitching_details['date'])
+    pitching_details['cwpa'] = pitching_details['cwpa'].apply(lambda x: float(x.strip('%')))
+ 
+    if type =='pitching_starters':
+        # Starting pitchers
+        df = pitching_details[
+            pitching_details['ip'] >= 6
+        ].groupby(
+            ['date', 'visitor', 'home', 'team']
+        ).sum(
+        ).reset_index()
+        return df
+
+    elif type == 'pitching_bullpen':
+        # Bullpen pitchers
+        df = pitching_details[
+            pitching_details['ip'] < 6
+        ].groupby(
+            ['date', 'visitor', 'home', 'team']
+        ).sum(
+        ).reset_index()
+        return df
+
+    return None
+    
+
+
 def load_schedules():
     # Load schedules
     schedule = pd.DataFrame()
@@ -47,7 +76,7 @@ def feature_engineer(df, type):
         df['1b'] = df['h'] - (df['2b'] + df['3b'] + df['hr'])
         df['slg'] = (df['1b'] + 2*df['2b'] + 3*df['3b'] + 4*df['hr']) / df['ab']
         df['ops'] = df['obp'] + df['slg']
-    elif type == 'pitching':
+    elif type == 'pitching_totals' or type == 'pitching_starters' or type == 'pitching_visitor':
         df['era'] = 9 * df['er'] / df['ip']
 
     return df
@@ -55,20 +84,29 @@ def feature_engineer(df, type):
 
 def ema(df, type, schedule):
 
-    df = pd.merge(
-        schedule.drop(['season'], axis=1),
-        df,
-        left_on=['date', 'visitor', 'home'],
-        right_on=['date', 'visitor', 'home'],
-        how='left'
-    )
-
     ema_df = pd.DataFrame()
 
     for team in df['team'].unique():
         for season in df['date'].dt.year.unique():
             team_df = df[(df['team'] == team) & (df['date'].dt.year == season)].sort_values(by=['date']).copy()
-            for col in list(set(df.columns).difference({'date', 'visitor', 'home', 'team'})):
+            
+            team_schedule = schedule[
+                ((schedule['home'] == team) | (schedule['visitor'] == team)) & 
+                (schedule['date'].dt.year == season)
+            ].drop(['season'], axis=1)
+
+            team_df = pd.merge(
+                team_schedule,
+                team_df,
+                left_on=['date', 'visitor', 'home'],
+                right_on=['date', 'visitor', 'home'],
+                how='left'
+            ).drop_duplicates(
+                ['date', 'visitor', 'home', 'team']
+            )
+            
+            team_df['team'] = team_df['team'].shift(1)
+            for col in list(set(team_df.columns).difference({'date', 'visitor', 'home', 'team'})):
                 team_df[col] = team_df[col].ewm(alpha=.5).mean()
                 team_df[col] = team_df[col].shift(1)
             
@@ -93,8 +131,13 @@ def ema(df, type, schedule):
 def preprocess(type):
     if type == 'batting':
         df = load_batting_totals()
-    elif type == 'pitching':
+    elif type == 'pitching_totals':
         df = load_pitching_totals()
+    elif type == 'pitching_starters':
+        df = load_pitching_details('pitching_starters')
+    elif type == 'pitching_bullpen':
+        df = load_pitching_details('pitching_bullpen')
+    
 
     schedule = load_schedules()
     ema_df = ema(df, type, schedule)
@@ -104,15 +147,14 @@ def preprocess(type):
 
 def load_preprocessed_data():
     batting_df = preprocess('batting')
-    pitching_df = preprocess('pitching')
+    pitching_df = preprocess('pitching_totals')
 
     df = pd.merge(
         batting_df,
         pitching_df,
         left_on=['date', 'visitor', 'home', 'team'], 
         right_on=['date', 'visitor', 'home', 'team'],
-        suffixes=('_batting', '_pitching'), 
-        how='left'
+        suffixes=('_batting', '_pitching')
     )
 
     home_df = df[df['home'] == df['team']].copy()
@@ -135,7 +177,8 @@ def load_preprocessed_data():
 
     df = df.drop(
         [
-            'team_home', 'team_visitor', 'h_target_batting_home', 'h_target_batting_visitor', 
+            'team_home', 'team_visitor', 
+            'h_target_batting_home', 'h_target_batting_visitor', 
             'h_target_pitching_home', 'h_target_pitching_visitor'
         ], 
         axis=1
