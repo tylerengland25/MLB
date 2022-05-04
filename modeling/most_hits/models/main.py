@@ -4,7 +4,7 @@ import pandas as pd
 
 def load_models():
     models = {}
-    model_list = ['gnb', 'log_reg', 'nn', 'rand_forest', 'svm']
+    model_list = ['gnb', 'log_reg', 'nn', 'rand_forest', 'svm', 'lda']
     for model in model_list:
         models[model] = pickle.load(open(f'modeling/most_hits/models/{model}.pkl', 'rb'))
     
@@ -14,7 +14,7 @@ def load_models():
 def load_data():
     df = pd.read_csv('backend/preprocess/preprocess.csv')
     df['date'] = pd.to_datetime(df['date'])
-    df = df[(df['date'].dt.year >= 2022) & (df['date'] != df['date'].max())]
+    df = df[df['date'].dt.year >= 2022]
 
     return df
 

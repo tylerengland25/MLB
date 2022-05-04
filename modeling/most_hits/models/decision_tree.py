@@ -1,4 +1,4 @@
-from sklearn.svm import LinearSVC
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
@@ -20,8 +20,8 @@ def model():
 
     # Model pipeline
     scaler = StandardScaler()
-    svm = LinearSVC(random_state=1)
-    model = Pipeline([('standardize', scaler), ('svm', svm)])
+    decision_tree = DecisionTreeClassifier(random_state=5)
+    model = Pipeline([('standardize', scaler), ('tree', decision_tree)])
 
     # Train
     model.fit(X_train, y_train)
@@ -30,9 +30,9 @@ def model():
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
 
-    print(f'SVM Accuracy: {round(accuracy * 100)}%')
+    print(f'Decision Tree Accuracy: {round(accuracy * 100)}%')
 
-    pickle.dump(model, open('modeling/most_hits/models/svm.pkl','wb'))
+    pickle.dump(model, open('modeling/most_hits/models/decision_tree.pkl','wb'))
 
 
 if __name__ == '__main__':

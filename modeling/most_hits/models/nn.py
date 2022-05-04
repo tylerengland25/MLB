@@ -20,7 +20,7 @@ def model():
 
     # Model pipeline
     scaler = StandardScaler()
-    nn = MLPClassifier(random_state=1)
+    nn = MLPClassifier(hidden_layer_sizes=(100, ), random_state=1, max_iter=300)
     model = Pipeline([('standardize', scaler), ('nn', nn)])
 
     # Train

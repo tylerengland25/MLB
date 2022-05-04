@@ -15,6 +15,7 @@ def load_data():
     # Load predictions
     predictions = pd.read_csv('backend/data/predictions/most_hits.csv')
     predictions['date'] = pd.to_datetime(predictions['date'])
+    predictions = predictions[predictions['date'] != predictions['date'].max()]
 
     # Merge odds
     odds = pd.read_excel('backend/data/odds/most_hits.xlsx').dropna(axis=0)

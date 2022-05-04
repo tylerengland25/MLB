@@ -16,7 +16,7 @@ def model():
     y = df['most_hits']
 
     # Split data 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=1)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=5)
 
     # Model pipeline
     scaler = StandardScaler()

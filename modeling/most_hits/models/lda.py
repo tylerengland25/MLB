@@ -1,4 +1,4 @@
-from sklearn.svm import LinearSVC
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
@@ -16,12 +16,12 @@ def model():
     y = df['most_hits']
 
     # Split data 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=1)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=10)
 
     # Model pipeline
     scaler = StandardScaler()
-    svm = LinearSVC(random_state=1)
-    model = Pipeline([('standardize', scaler), ('svm', svm)])
+    lda = LinearDiscriminantAnalysis()
+    model = Pipeline([('standardize', scaler), ('lda', lda)])
 
     # Train
     model.fit(X_train, y_train)
@@ -30,9 +30,9 @@ def model():
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
 
-    print(f'SVM Accuracy: {round(accuracy * 100)}%')
-
-    pickle.dump(model, open('modeling/most_hits/models/svm.pkl','wb'))
+    print(f'LDA Accuracy: {round(accuracy * 100)}%')
+    
+    pickle.dump(model, open('modeling/most_hits/models/lda.pkl','wb'))
 
 
 if __name__ == '__main__':

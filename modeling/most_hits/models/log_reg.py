@@ -20,7 +20,7 @@ def model():
 
     # Model pipeline
     scaler = StandardScaler()
-    lr = LogisticRegression(random_state=1)
+    lr = LogisticRegression(random_state=1, max_iter=200)
     model = Pipeline([('standardize', scaler), ('log_reg', lr)])
 
     # Train
