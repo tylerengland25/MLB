@@ -20,7 +20,7 @@ def model():
 
     # Model pipeline
     scaler = StandardScaler()
-    svm = LinearSVC(random_state=1)
+    svm = LinearSVC(random_state=1, max_iter=5000)
     model = Pipeline([('standardize', scaler), ('svm', svm)])
 
     # Train

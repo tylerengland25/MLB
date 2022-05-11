@@ -1,16 +1,13 @@
 #!/bin/bash
 
-python backend/scraping/stats.py
+# python backend/scraping/stats.py
 
 python backend/preprocess/preprocess.py
 
-python modeling/most_hits/models/log_reg.py
-python modeling/most_hits/models/nn.py
-python modeling/most_hits/models/svm.py
-python modeling/most_hits/models/rand_forest.py
-python modeling/most_hits/models/gnb.py
-python modeling/most_hits/models/lda.py
+python modeling/total_hits/models/decision_tree.py
+python modeling/total_hits/models/gradient_boosted.py
+python modeling/total_hits/models/nn.py
+python modeling/total_hits/models/linear_regression.py
+python modeling/total_hits/models/random_forest.py
 
-python modeling/most_hits/models/main.py
-
-python modeling/most_hits/models/evaluate.py
+python modeling/total_hits/main.py
