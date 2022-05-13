@@ -1,6 +1,15 @@
-from turtle import home
+from matplotlib.pyplot import axis
 import pandas as pd
 import numpy as np
+
+
+def rename_team(team):
+    if team == 'Cleveland Indians':
+        return 'Cleveland Guardians'
+    elif team == 'Arizona D\'Backs' or team == 'Arizona D\`Backs':
+        return 'Arizona Diamondbacks'
+    else:
+        return team
 
 
 def load_schedule():
@@ -58,6 +67,11 @@ def load_scores():
     )
 
     df = df.append(schedule, ignore_index=True)
+
+    df['home'] = df['home'].apply(lambda x: rename_team(x))
+    df['visitor'] = df['visitor'].apply(lambda x: rename_team(x))
+    df['team'] = df['team'].apply(lambda x: rename_team(x))
+    df['opponent'] = df['opponent'].apply(lambda x: rename_team(x))
 
     df = df.set_index(
         ['team']
@@ -124,23 +138,49 @@ def merge_ma_outcome(ma, outcome):
         suffixes=('_actual', '_expected')
     )
 
-    df = df[
-        [
-            'date', 'visitor', 'home', 'most_hits', 'total_hits', 
-            'H_scored_avg_home', 'H_scored_std_home', 
-            'H_allowed_avg_home', 'H_allowed_std_home',
-            'H_scored_avg_visitor', 'H_scored_std_visitor', 
-            'H_allowed_avg_visitor', 'H_allowed_std_visitor'
-        ]
+    cols = [
+        'H_scored_avg_home', 'H_scored_std_home', 
+        'H_allowed_avg_home', 'H_allowed_std_home',
+        'H_scored_avg_visitor', 'H_scored_std_visitor', 
+        'H_allowed_avg_visitor', 'H_allowed_std_visitor'
     ]
+    cols_20 = [f'{col}_20' for col in cols]
+    cols_10 = [f'{col}_10' for col in cols]
+
+    df = df[['date', 'visitor', 'home', 'most_hits', 'total_hits'] + cols + cols_20 + cols_10]
 
     return df.sort_values(by=['date'])
+
+
+def merge_ma(sma_20, sma_10, sma_5):
+    df = pd.merge(
+        sma_20,
+        sma_10,
+        left_on=['date', 'visitor', 'home'],
+        right_on=['date', 'visitor', 'home'],
+        suffixes=('_20', '_10')
+    )
+
+    df = pd.merge(
+        df,
+        sma_5,
+        left_on=['date', 'visitor', 'home'],
+        right_on=['date', 'visitor', 'home'],
+        suffixes=('', '_5')
+    )
+    
+    return df
 
 
 def load_preprocessed_data():
     df = load_scores()
 
-    df_ma = sma(20, df)
+    sma_20 = sma(20, df)
+    sma_10 = sma(10, df)
+    sma_5 = sma(5, df)
+
+    df_ma = merge_ma(sma_20, sma_10, sma_5)
+
     df_outcome = load_outcome(df)
 
     df = merge_ma_outcome(df_ma, df_outcome)
