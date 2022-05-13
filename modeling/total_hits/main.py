@@ -25,7 +25,6 @@ def predict():
 
     # Load data
     preprocessed = load_data()
-    print(f'Preprocessed: {preprocessed.shape}')
 
     # Make predictions
     predictions = preprocessed[['date', 'visitor', 'home', 'total_hits']].copy()
