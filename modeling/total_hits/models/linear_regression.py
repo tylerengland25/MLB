@@ -15,7 +15,7 @@ def load_data():
     df = pd.read_csv(preprocess_path)
 
     df['date'] = pd.to_datetime(df['date'])
-    df = df[df['date'].dt.year < 2022]
+    df = df[df['date'] != df['date'].max()]
 
     return df.fillna(0)
 

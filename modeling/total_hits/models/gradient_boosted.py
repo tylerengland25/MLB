@@ -15,7 +15,7 @@ def load_data():
     df = pd.read_csv(preprocess_path)
 
     df['date'] = pd.to_datetime(df['date'])
-    df = df[df['date'].dt.year < 2022]
+    df = df[df['date'] != df['date'].max()]
 
     return df.fillna(0)
 
@@ -33,7 +33,13 @@ def model():
 
     # Model pipeline
     scaler = StandardScaler()
-    gb = GradientBoostingRegressor(random_state=0)
+    gb = GradientBoostingRegressor(
+        random_state=0,
+        n_estimators=50,
+        subsample=.25,
+        min_samples_leaf=10,
+        min_samples_split=500
+    )
     model = Pipeline([('scaler', scaler), ('gb', gb)])
 
     # Train model

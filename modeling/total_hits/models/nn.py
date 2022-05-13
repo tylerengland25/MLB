@@ -1,8 +1,10 @@
+from statistics import mode
 import pandas as pd
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPRegressor
+from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 import pickle
 
@@ -15,7 +17,7 @@ def load_data():
     df = pd.read_csv(preprocess_path)
 
     df['date'] = pd.to_datetime(df['date'])
-    df = df[df['date'].dt.year < 2022]
+    df = df[df['date'] != df['date'].max()]
 
     return df.fillna(0)
 
@@ -33,7 +35,15 @@ def model():
 
     # Model pipeline
     scaler = StandardScaler()
-    nn = MLPRegressor(random_state=0)
+    nn = MLPRegressor(
+        hidden_layer_sizes=(100, 50, ),
+        random_state=0,
+        alpha=.0001, 
+        batch_size=200, 
+        learning_rate='adaptive',
+        learning_rate_init=.0001,
+        max_iter=200
+    )
     model = Pipeline([('scaler', scaler), ('nn', nn)])
 
     # Train model
@@ -59,6 +69,31 @@ def evaluate_model(X_test, y_test, model):
 
     print('\nNN')
     print(evaluations_df)
+
+
+def hypertune(model, X_train, y_train):
+    params = {
+        'nn__batch_size': [200, 300],
+        'nn__learning_rate': ['adaptive', 'invscaling'],
+        'nn__learning_rate_init': [.001, .0001], 
+        'nn__alpha': [.1, .01],
+        'nn__max_iter': [500]
+    }
+
+    nn = GridSearchCV(
+        model,
+        param_grid=params,
+        scoring='neg_mean_absolute_error',
+        cv=3, 
+        verbose=2,
+        n_jobs=10
+    )
+
+    nn.fit(X_train, y_train)
+
+    print(nn.best_params_)
+
+    return nn.best_estimator_
 
 
 if __name__ == '__main__':

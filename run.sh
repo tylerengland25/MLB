@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# python backend/scraping/stats.py
+python backend/scraping/stats.py
 
 python backend/preprocess/preprocess.py
 

@@ -144,21 +144,21 @@ def merge_ma_outcome(ma, outcome):
         'H_scored_avg_visitor', 'H_scored_std_visitor', 
         'H_allowed_avg_visitor', 'H_allowed_std_visitor'
     ]
-    cols_20 = [f'{col}_20' for col in cols]
-    cols_10 = [f'{col}_10' for col in cols]
+    cols_30 = [f'{col}_30' for col in cols]
+    cols_15 = [f'{col}_15' for col in cols]
 
-    df = df[['date', 'visitor', 'home', 'most_hits', 'total_hits'] + cols + cols_20 + cols_10]
+    df = df[['date', 'visitor', 'home', 'most_hits', 'total_hits'] + cols + cols_30 + cols_15]
 
     return df.sort_values(by=['date'])
 
 
-def merge_ma(sma_20, sma_10, sma_5):
+def merge_ma(sma_30, sma_15, sma_5):
     df = pd.merge(
-        sma_20,
-        sma_10,
+        sma_30,
+        sma_15,
         left_on=['date', 'visitor', 'home'],
         right_on=['date', 'visitor', 'home'],
-        suffixes=('_20', '_10')
+        suffixes=('_30', '_15')
     )
 
     df = pd.merge(
@@ -175,11 +175,11 @@ def merge_ma(sma_20, sma_10, sma_5):
 def load_preprocessed_data():
     df = load_scores()
 
-    sma_20 = sma(20, df)
-    sma_10 = sma(10, df)
+    sma_30 = sma(30, df)
+    sma_15 = sma(15, df)
     sma_5 = sma(5, df)
 
-    df_ma = merge_ma(sma_20, sma_10, sma_5)
+    df_ma = merge_ma(sma_30, sma_15, sma_5)
 
     df_outcome = load_outcome(df)
 

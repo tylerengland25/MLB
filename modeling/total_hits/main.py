@@ -14,7 +14,8 @@ def load_models():
 def load_data():
     df = pd.read_csv('backend/preprocess/preprocess.csv')
     df['date'] = pd.to_datetime(df['date'])
-    df = df[df['date'].dt.year >= 2022]
+
+    df = df[df['date'] == df['date'].max()]
 
     return df
 
@@ -27,17 +28,27 @@ def predict():
     preprocessed = load_data()
 
     # Make predictions
-    predictions = preprocessed[['date', 'visitor', 'home', 'total_hits']].copy()
+    new_predictions = preprocessed[['date', 'visitor', 'home', 'total_hits']].copy()
     for model in models:
-        predictions[model] = models[model].predict(
+        new_predictions[model] = models[model].predict(
             preprocessed.drop(
                 ['date', 'visitor', 'home', 'most_hits', 'total_hits'], 
                 axis=1
             )
         )
-        predictions[model] = [round(x) for x in predictions[model]]
+        new_predictions[model] = [round(x) for x in new_predictions[model]]
     
     # Save predictions
+    predictions = pd.read_csv('backend/data/predictions/total_hits.csv')
+    predictions['date'] = pd.to_datetime(predictions['date'])
+    predictions = predictions.append(
+        new_predictions, 
+        ignore_index=True
+    ).drop_duplicates(
+        ['date', 'visitor', 'home'],
+        keep='last'
+    )
+
     predictions.sort_values(
         by=['date']
     ).to_csv(
