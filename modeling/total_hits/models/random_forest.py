@@ -33,7 +33,7 @@ def model():
 
     # Model pipeline
     scaler = StandardScaler()
-    rf = RandomForestRegressor(random_state=0, n_estimators=125, min_samples_leaf=5, min_samples_split=25)
+    rf = RandomForestRegressor(random_state=0)
     model = Pipeline([('scaler', scaler), ('rf', rf)])
 
     # Train model

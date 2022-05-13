@@ -1,5 +1,18 @@
+from turtle import home
 import pandas as pd
 import numpy as np
+
+
+def load_schedule():
+    # Load schedules
+    schedule = pd.DataFrame()
+    for season in range(2022-5, 2023):
+        schedule = schedule.append(pd.read_csv(f'backend/data/schedules/{season}.csv'), ignore_index=True)
+
+    schedule['date'] = pd.to_datetime(schedule['date'])
+    schedule = schedule.drop_duplicates(['date', 'visitor', 'home'])
+    
+    return schedule
 
 
 def load_scores():
@@ -11,6 +24,21 @@ def load_scores():
     scores = scores[['date', 'visitor', 'home', 'team', 'H']]
     scores['opponent'] = np.where(scores['team'] == scores['home'], scores['visitor'], scores['home'])
     scores['season'] = scores['date'].dt.year
+
+    # Load schedule
+    schedule = load_schedule()
+    next_slate = schedule[schedule['date'] > scores['date'].max()]['date'].min()
+    schedule = schedule[schedule['date'] == next_slate]
+
+    home_sched = schedule.copy()
+    home_sched['team'] = home_sched['home']
+    home_sched['opponent'] = home_sched['visitor']
+
+    visitor_sched = schedule.copy()
+    visitor_sched['team'] = visitor_sched['visitor']
+    visitor_sched['opponent'] = visitor_sched['home']
+
+    schedule = home_sched.append(visitor_sched, ignore_index=True)
 
     df = pd.merge(
         scores, 
@@ -24,7 +52,12 @@ def load_scores():
     ).rename(
         {'team_scored': 'team', 'opponent_scored': 'opponent', 'season_scored': 'season'},
         axis=1
+    ).dropna(
+        subset=['team'],
+        axis=0
     )
+
+    df = df.append(schedule, ignore_index=True)
 
     df = df.set_index(
         ['team']
@@ -40,13 +73,13 @@ def sma(num_games, df):
 
         matchup_df['H_scored_avg'] = matchup_df['H_scored'].rolling(num_games, closed='left', min_periods=num_games).mean()
         matchup_df['H_scored_std'] = matchup_df['H_scored'].rolling(num_games, closed='left', min_periods=num_games).std()
-        
+
         matchup_df['H_allowed_avg'] = matchup_df['H_allowed'].rolling(num_games, closed='left', min_periods=num_games).mean()
         matchup_df['H_allowed_std'] = matchup_df['H_allowed'].rolling(num_games, closed='left', min_periods=num_games).std()
-        
+
         ma_df = ma_df.append(matchup_df.reset_index(), ignore_index=True)
 
-    ma_df = ma_df.dropna(axis=0)
+    ma_df = ma_df.dropna(subset=['H_scored_avg'], axis=0)
 
     cols = ['date', 'visitor', 'home', 'H_scored_avg', 'H_scored_std', 'H_allowed_avg', 'H_allowed_std']
     home_df = ma_df[ma_df['home'] == ma_df['team']][cols]
@@ -101,7 +134,7 @@ def merge_ma_outcome(ma, outcome):
         ]
     ]
 
-    return df
+    return df.sort_values(by=['date'])
 
 
 def load_preprocessed_data():
